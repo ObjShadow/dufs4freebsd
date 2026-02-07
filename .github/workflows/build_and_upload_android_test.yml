@@ -56,6 +56,8 @@ jobs:
           ANDROID_TEST_CONFIG_INIT_SCRIPT: ${{ secrets.ANDROID_TEST_CONFIG_INIT_SCRIPT }}
         with:
           api-level: 31
+          target: google_apis
+          arch: x86_64   
           disable-spellchecker: true
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
@@ -68,6 +70,8 @@ jobs:
           ANDROID_TEST_CONFIG_EXTRACT_SCRIPT: ${{ secrets.ANDROID_TEST_CONFIG_EXTRACT_SCRIPT }}
         with:
           api-level: 31
+          target: google_apis
+          arch: x86_64
           disable-spellchecker: true
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
