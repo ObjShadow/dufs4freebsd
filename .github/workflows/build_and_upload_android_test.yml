@@ -1,0 +1,54 @@
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+name: build_and_upload_android_test
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+        
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ matrix.api-level }}
+
+      - name: create AVD and generate snapshot for caching
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          ANDROID_TEST_CONFIG_INIT_SCRIPT: ${{ secrets.ANDROID_TEST_CONFIG_INIT_SCRIPT }}
+        with:
+          api-level: ${{ matrix.api-level }}
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: $ANDROID_TEST_CONFIG_INIT_SCRIPT
+#          script: echo "Generated AVD snapshot for caching."
+
+      - name: run tests
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          ANDROID_TEST_CONFIG_EXTRACT_SCRIPT: ${{ secrets.ANDROID_TEST_CONFIG_EXTRACT_SCRIPT }}
+        with:
+          api-level: ${{ matrix.api-level }}
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: $ANDROID_TEST_CONFIG_EXTRACT_SCRIPT
+
+          
