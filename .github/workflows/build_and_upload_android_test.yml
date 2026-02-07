@@ -7,7 +7,7 @@ name: build_and_upload_android_test
 
 jobs:
   build-and-release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
@@ -47,6 +47,8 @@ jobs:
           ANDROID_TEST_CONFIG_INIT_SCRIPT: ${{ secrets.ANDROID_TEST_CONFIG_INIT_SCRIPT }}
         with:
           api-level: 31
+          arch: arm64-v8a
+          disable-spellchecker: true
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
@@ -58,6 +60,8 @@ jobs:
           ANDROID_TEST_CONFIG_EXTRACT_SCRIPT: ${{ secrets.ANDROID_TEST_CONFIG_EXTRACT_SCRIPT }}
         with:
           api-level: 31
+          arch: arm64-v8a
+          disable-spellchecker: true
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
