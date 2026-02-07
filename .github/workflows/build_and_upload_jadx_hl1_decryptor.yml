@@ -15,7 +15,7 @@ jobs:
       
       - name: Download jadx
         run: |
-          wget https://github.com/skylot/jadx/releases/download/v1.5.3/jadx-1.5.3.zip
+          wget https://github.com/skylot/jadx/releases/download/v1.4.7/jadx-1.4.7.zip
           unzip jadx-1.4.7.zip -d jadx-1.4.7
           chmod +x jadx-1.4.7/bin/jadx
           echo "$(pwd)/jadx-1.4.7/bin" >> $GITHUB_PATH
