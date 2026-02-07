@@ -33,100 +33,106 @@ jobs:
         run: |
           cat > jadx-hl1-decryptor/src/main/java/jadx/plugins/decrypt/Hl1DecryptorPlugin.java << 'EOF'
           package jadx.plugins.decrypt;
-
+          
           import jadx.api.plugins.JadxPlugin;
           import jadx.api.plugins.JadxPluginContext;
+          import jadx.api.plugins.passes.JadxDecompilePass;
+          import jadx.core.dex.nodes.ClassNode;
           import jadx.core.dex.nodes.MethodNode;
-          import jadx.core.dex.visitors.JadxVisitor;
-          import jadx.core.dex.visitors.ModVisitor;
+          import jadx.core.dex.visitors.AbstractVisitor;
           import jadx.core.dex.instructions.InsnType;
           import jadx.core.dex.instructions.InvokeNode;
           import jadx.core.dex.instructions.args.InsnArg;
+          import jadx.core.dex.instructions.args.LiteralArg;
           import jadx.core.dex.instructions.ConstStringNode;
-          import jadx.core.utils.exceptions.JadxException;
-          import jadx.core.dex.instructions.args.ArgType;
-
-          import java.util.Base64;
+          import jadx.core.utils.exceptions.JadxRuntimeException;
+          
           import java.nio.charset.StandardCharsets;
-
+          import java.util.Base64;
+          
           /**
-           * 自动解密defpackage.hl1.a()方法调用的JADX插件
+           * 适配JADX 1.5.3版本的Hl1解密插件
            */
           public class Hl1DecryptorPlugin implements JadxPlugin {
-
+          
               @Override
               public void init(JadxPluginContext context) {
-                  context.registerCodeRefresher(refresher -> refresher.addBefore(
-                      new Hl1DecryptionVisitor(),
-                      jadx.core.dex.visitors.ModVisitor.class
-                  ));
+                  // 注册解密处理通道
+                  context.registerDecompilePass(new Hl1DecryptionPass());
               }
-
-              @Override
-              public String getName() {
-                  return "Hl1 String Decryptor";
-              }
-
-              @Override
-              public String getDescription() {
-                  return "自动解密defpackage.hl1.a()方法调用中的加密字符串";
-              }
-
-              @JadxVisitor(name = "Hl1DecryptionVisitor", desc = "解密defpackage.hl1.a()调用")
-              public static class Hl1DecryptionVisitor extends ModVisitor {
-
+          
+              /**
+               * 解密处理通道
+               */
+              public static class Hl1DecryptionPass extends AbstractVisitor implements JadxDecompilePass {
+              
                   @Override
-                  public void visit(MethodNode mth) throws JadxException {
-                      if (mth.isNoCode()) {
+                  public String getName() {
+                      return "Hl1StringDecryption";
+                  }
+          
+                  @Override
+                  public void visit(MethodNode mth) {
+                      if (mth.contains(AType.DONT_GENERATE)) {
                           return;
                       }
-
-                      // 遍历所有指令寻找hl1.a调用
-                      for (int i = 0; i < mth.getInstructions().length; i++) {
-                          jadx.core.dex.instructions.InsnNode insn = mth.getInstructions()[i];
-                          if (insn != null && insn.getType() == InsnType.INVOKE) {
-                              InvokeNode invoke = (InvokeNode) insn;
-                              String methodName = invoke.getCallMth().getName();
-                              String className = invoke.getCallMth().getDeclClass().getFullName();
-
-                              if ("a".equals(methodName) && 
-                                  ("defpackage.hl1".equals(className) || 
-                                   className.endsWith(".hl1"))) {
+          
+                      try {
+                          jadx.core.dex.instructions.InsnNode[] instructions = mth.getInstructions();
+                          if (instructions == null) {
+                              return;
+                          }
+          
+                          for (int i = 0; i < instructions.length; i++) {
+                              jadx.core.dex.instructions.InsnNode insn = instructions[i];
+                              if (insn != null && insn.getType() == InsnType.INVOKE) {
+                                  InvokeNode invokeInsn = (InvokeNode) insn;
                                   
-                                  // 检查参数是否都是常量字符串
-                                  if (invoke.getArgsCount() == 2) {
-                                      InsnArg arg0 = invoke.getArg(0);
-                                      InsnArg arg1 = invoke.getArg(1);
-
-                                      if (arg0.isLiteral() && arg1.isLiteral()) {
-                                          Object val0 = arg0.getValue();
-                                          Object val1 = arg1.getValue();
-
-                                          if (val0 instanceof String && val1 instanceof String) {
-                                              String encrypted = (String) val0;
-                                              String key = (String) val1;
-
-                                              try {
-                                                  String decrypted = decryptString(encrypted, key);
-                                                  
-                                                  // 替换为常量字符串加载指令
-                                                  jadx.core.dex.instructions.ConstStringNode constStrInsn = 
-                                                      new jadx.core.dex.instructions.ConstStringNode(
-                                                          ArgType.STRING, decrypted);
-                                                  
-                                                  mth.getInstructions()[i] = constStrInsn;
-                                              } catch (Exception e) {
-                                                  // 如果解密失败，保留原始调用
-                                                  continue;
+                                  // 检查是否是hl1.a方法调用
+                                  String methodName = invokeInsn.getCallMth().getName();
+                                  String className = invokeInsn.getCallMth().getDeclClass().getRawName();
+                                  
+                                  if ("a".equals(methodName) && 
+                                      (className.equals("defpackage.hl1") || className.endsWith(".hl1"))) {
+                                      
+                                      // 检查参数是否都是字面值字符串
+                                      if (invokeInsn.getArgsCount() == 2) {
+                                          InsnArg arg0 = invokeInsn.getArg(0);
+                                          InsnArg arg1 = invokeInsn.getArg(1);
+          
+                                          if (arg0 instanceof LiteralArg && arg1 instanceof LiteralArg) {
+                                              LiteralArg litArg0 = (LiteralArg) arg0;
+                                              LiteralArg litArg1 = (LiteralArg) arg1;
+          
+                                              if (litArg0.isString() && litArg1.isString()) {
+                                                  String encrypted = litArg0.getValue().toString();
+                                                  String key = litArg1.getValue().toString();
+          
+                                                  try {
+                                                      String decrypted = decryptString(encrypted, key);
+                                                      
+                                                      // 创建新的常量字符串指令替换原调用
+                                                      ConstStringNode constStrInsn = new ConstStringNode(decrypted);
+                                                      constStrInsn.setResult(invokeInsn.getResult());
+                                                      
+                                                      // 替换原指令
+                                                      instructions[i] = constStrInsn;
+                                                  } catch (Exception e) {
+                                                      // 如果解密失败，保留原始调用
+                                                      System.err.println("解密失败: " + e.getMessage());
+                                                      continue;
+                                                  }
                                               }
                                           }
                                       }
                                   }
                               }
                           }
+                      } catch (Exception e) {
+                          System.err.println("处理方法 " + mth + " 时出错: " + e.getMessage());
                       }
                   }
-
+          
                   /**
                    * 实现解密逻辑
                    */
@@ -144,16 +150,16 @@ jobs:
                           return "DECRYPTION_ERROR: " + encodedStr;
                       }
                   }
-
+          
                   /**
                    * Base64解码实现
                    */
                   private byte[] base64Decode(String input) {
                       // 移除换行符等字符
-                      String cleanInput = input.replace("\n", "").replace("\r", "");
+                      String cleanInput = input.replace("\n", "").replace("\r", "").trim();
                       return Base64.getDecoder().decode(cleanInput);
                   }
-
+          
                   /**
                    * XOR操作实现
                    */
@@ -169,6 +175,16 @@ jobs:
                       
                       return result;
                   }
+              }
+          
+              @Override
+              public String getName() {
+                  return "Hl1 String Decryptor";
+              }
+          
+              @Override
+              public String getDescription() {
+                  return "自动解密defpackage.hl1.a()方法调用中的加密字符串 (JADX 1.5.3+ 版本)";
               }
           }
           EOF
