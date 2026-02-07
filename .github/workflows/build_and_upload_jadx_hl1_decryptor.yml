@@ -1,6 +1,7 @@
-name: jadx-hl1-decryptor-action
 on:
   workflow_dispatch:
+
+name: jadx-hl1-decryptor-action
 
 jobs:
   build-and-release:
