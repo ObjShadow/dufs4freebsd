@@ -7,7 +7,7 @@ name: build_and_upload_android_test
 
 jobs:
   build-and-release:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
@@ -36,6 +36,7 @@ jobs:
 
       - name: Enable KVM
         run: |
+          sudo apt update
           sudo apt install qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
@@ -58,7 +59,7 @@ jobs:
         with:
           api-level: 31
           target: google_apis
-          arch: x86_64
+          arch: arm64-v8a
           disable-spellchecker: true
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
@@ -72,7 +73,7 @@ jobs:
         with:
           api-level: 31
           target: google_apis
-          arch: x86_64
+          arch: arm64-v8a
           disable-spellchecker: true
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
