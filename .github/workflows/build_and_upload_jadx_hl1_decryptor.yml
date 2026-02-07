@@ -1,0 +1,253 @@
+name: jadx-hl1-decryptor-action
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up JDK 24
+        uses: actions/setup-java@v3
+        with:
+          java-version: '24'
+          distribution: 'temurin'
+      
+      - name: Download jadx
+        run: |
+          wget https://github.com/skylot/jadx/releases/download/v1.5.3/jadx-1.5.3.zip
+          unzip jadx-1.5.3.zip
+          chmod +x jadx-1.5.3/bin/jadx
+          echo "$(pwd)/jadx-1.5.3/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y maven
+      
+      - name: Create plugin directory
+        run: |
+          mkdir -p jadx-hl1-decryptor/src/main/java/jadx/plugins/decrypt
+          
+      - name: Write plugin source code
+        run: |
+          cat > jadx-hl1-decryptor/src/main/java/jadx/plugins/decrypt/Hl1DecryptorPlugin.java << 'EOF'
+          package jadx.plugins.decrypt;
+
+          import jadx.api.plugins.JadxPlugin;
+          import jadx.api.plugins.JadxPluginContext;
+          import jadx.core.dex.nodes.MethodNode;
+          import jadx.core.dex.visitors.JadxVisitor;
+          import jadx.core.dex.visitors.ModVisitor;
+          import jadx.core.dex.instructions.InsnType;
+          import jadx.core.dex.instructions.InvokeNode;
+          import jadx.core.dex.instructions.args.InsnArg;
+          import jadx.core.dex.instructions.ConstStringNode;
+          import jadx.core.utils.exceptions.JadxException;
+          import jadx.core.dex.instructions.args.ArgType;
+
+          import java.util.Base64;
+          import java.nio.charset.StandardCharsets;
+
+          /**
+           * 自动解密defpackage.hl1.a()方法调用的JADX插件
+           */
+          public class Hl1DecryptorPlugin implements JadxPlugin {
+
+              @Override
+              public void init(JadxPluginContext context) {
+                  context.registerCodeRefresher(refresher -> refresher.addBefore(
+                      new Hl1DecryptionVisitor(),
+                      jadx.core.dex.visitors.ModVisitor.class
+                  ));
+              }
+
+              @Override
+              public String getName() {
+                  return "Hl1 String Decryptor";
+              }
+
+              @Override
+              public String getDescription() {
+                  return "自动解密defpackage.hl1.a()方法调用中的加密字符串";
+              }
+
+              @JadxVisitor(name = "Hl1DecryptionVisitor", desc = "解密defpackage.hl1.a()调用")
+              public static class Hl1DecryptionVisitor extends ModVisitor {
+
+                  @Override
+                  public void visit(MethodNode mth) throws JadxException {
+                      if (mth.isNoCode()) {
+                          return;
+                      }
+
+                      // 遍历所有指令寻找hl1.a调用
+                      for (int i = 0; i < mth.getInstructions().length; i++) {
+                          jadx.core.dex.instructions.InsnNode insn = mth.getInstructions()[i];
+                          if (insn != null && insn.getType() == InsnType.INVOKE) {
+                              InvokeNode invoke = (InvokeNode) insn;
+                              String methodName = invoke.getCallMth().getName();
+                              String className = invoke.getCallMth().getDeclClass().getFullName();
+
+                              if ("a".equals(methodName) && 
+                                  ("defpackage.hl1".equals(className) || 
+                                   className.endsWith(".hl1"))) {
+                                  
+                                  // 检查参数是否都是常量字符串
+                                  if (invoke.getArgsCount() == 2) {
+                                      InsnArg arg0 = invoke.getArg(0);
+                                      InsnArg arg1 = invoke.getArg(1);
+
+                                      if (arg0.isLiteral() && arg1.isLiteral()) {
+                                          Object val0 = arg0.getValue();
+                                          Object val1 = arg1.getValue();
+
+                                          if (val0 instanceof String && val1 instanceof String) {
+                                              String encrypted = (String) val0;
+                                              String key = (String) val1;
+
+                                              try {
+                                                  String decrypted = decryptString(encrypted, key);
+                                                  
+                                                  // 替换为常量字符串加载指令
+                                                  jadx.core.dex.instructions.ConstStringNode constStrInsn = 
+                                                      new jadx.core.dex.instructions.ConstStringNode(
+                                                          ArgType.STRING, decrypted);
+                                                  
+                                                  mth.getInstructions()[i] = constStrInsn;
+                                              } catch (Exception e) {
+                                                  // 如果解密失败，保留原始调用
+                                                  continue;
+                                              }
+                                          }
+                                      }
+                                  }
+                              }
+                          }
+                      }
+                  }
+
+                  /**
+                   * 实现解密逻辑
+                   */
+                  private String decryptString(String encodedStr, String encodedKey) {
+                      try {
+                          byte[] decodedStr = base64Decode(encodedStr);
+                          byte[] decodedKey = base64Decode(encodedKey);
+                          
+                          // XOR解密
+                          byte[] decryptedBytes = xorBytes(decodedStr, decodedKey);
+                          
+                          return new String(decryptedBytes, StandardCharsets.UTF_8);
+                      } catch (Exception e) {
+                          System.err.println("解密失败: " + e.getMessage());
+                          return "DECRYPTION_ERROR: " + encodedStr;
+                      }
+                  }
+
+                  /**
+                   * Base64解码实现
+                   */
+                  private byte[] base64Decode(String input) {
+                      // 移除换行符等字符
+                      String cleanInput = input.replace("\n", "").replace("\r", "");
+                      return Base64.getDecoder().decode(cleanInput);
+                  }
+
+                  /**
+                   * XOR操作实现
+                   */
+                  private byte[] xorBytes(byte[] data, byte[] key) {
+                      int dataLength = data.length;
+                      int keyLength = key.length;
+                      byte[] result = new byte[dataLength];
+                      
+                      for (int i = 0; i < dataLength; i++) {
+                          int keyIndex = i % keyLength;
+                          result[i] = (byte) (data[i] ^ key[keyIndex]);
+                      }
+                      
+                      return result;
+                  }
+              }
+          }
+          EOF
+          
+      - name: Create Maven configuration
+        run: |
+          cat > jadx-hl1-decryptor/pom.xml << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <project xmlns="http://maven.apache.org/POM/4.0.0"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+                   http://maven.apache.org/xsd/maven-4.0.0.xsd">
+              <modelVersion>4.0.0</modelVersion>
+
+              <groupId>com.example</groupId>
+              <artifactId>jadx-hl1-decryptor</artifactId>
+              <version>1.0.0</version>
+              <packaging>jar</packaging>
+
+              <properties>
+                  <maven.compiler.source>8</maven.compiler.source>
+                  <maven.compiler.target>8</maven.compiler.target>
+                  <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+              </properties>
+
+              <dependencies>
+                  <dependency>
+                      <groupId>org.jetbrains</groupId>
+                      <artifactId>annotations</artifactId>
+                      <version>23.0.0</version>
+                      <scope>provided</scope>
+                  </dependency>
+                  <!-- 需要添加JADX核心库作为依赖 -->
+                  <dependency>
+                      <groupId>io.github.skylot</groupId>
+                      <artifactId>jadx-core</artifactId>
+                      <version>1.5.3</version>
+                      <scope>provided</scope>
+                  </dependency>
+              </dependencies>
+
+              <build>
+                  <plugins>
+                      <plugin>
+                          <groupId>org.apache.maven.plugins</groupId>
+                          <artifactId>maven-compiler-plugin</artifactId>
+                          <version>3.8.1</version>
+                          <configuration>
+                              <source>8</source>
+                              <target>8</target>
+                          </configuration>
+                      </plugin>
+                      <plugin>
+                          <groupId>org.apache.maven.plugins</groupId>
+                          <artifactId>maven-shade-plugin</artifactId>
+                          <version>3.2.4</version>
+                          <executions>
+                              <execution>
+                                  <phase>package</phase>
+                                  <goals>
+                                      <goal>shade</goal>
+                                  </goals>
+                              </execution>
+                          </executions>
+                      </plugin>
+                  </plugins>
+              </build>
+          </project>
+          EOF
+
+      - name: Build plugin
+        run: |
+          cd jadx-hl1-decryptor
+          mvn clean package
+
+      - name: Upload Binaries
+        uses: actions/upload-artifact@v4.3.0
+        with:
+          name: jadx-hl1-decryptor
+          path: target/jadx-hl1-decryptor-1.0.0.jar
+          retention-days: 1
+          compression-level: 0
+          overwrite: true
