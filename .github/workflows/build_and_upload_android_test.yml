@@ -17,13 +17,22 @@ jobs:
         with:
           version: "0.10.0"
           python-version: "3.12.1"
-          activate-environment: "false"
+          activate-environment: "true"
           github-token: ${{ github.token }}
           enable-cache: "auto"
           restore-cache: "true"
           save-cache: "true"
           prune-cache: "true"
           cache-python: "true"
+          add-problem-matchers: "true"
+          cache-dependency-glob: |
+                **/*requirements*.txt
+                **/*requirements*.in
+                **/*constraints*.txt
+                **/*constraints*.in
+                **/pyproject.toml
+                **/uv.lock
+                **/*.py.lock
 
       - name: Enable KVM
         run: |
