@@ -16,7 +16,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           version: "0.10.0"
-          python-version: "3.12.1"
+          python-version: "3.13.2"
           activate-environment: "true"
           github-token: ${{ github.token }}
           enable-cache: "auto"
