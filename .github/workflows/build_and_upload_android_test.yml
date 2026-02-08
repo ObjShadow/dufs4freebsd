@@ -72,7 +72,7 @@ jobs:
           arch: x86_64
           disable-spellchecker: true
           force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader -noaudio -no-boot-anim -camera-back -no-metrics @test
+          emulator-options: -no-metrics -no-window -gpu swiftshader -noaudio -no-boot-anim -camera-back none
           disable-animations: false
           script: |
             ${{ secrets.ANDROID_TEST_CONFIG_INIT_SCRIPT }}
@@ -85,7 +85,7 @@ jobs:
           arch: x86_64
           disable-spellchecker: true
           force-avd-creation: false
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader -noaudio -no-boot-anim -camera-back -no-metrics @test
+          emulator-options: -no-metrics -no-snapshot-save -no-window -gpu swiftshader -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
             ${{ secrets.ANDROID_TEST_CONFIG_EXTRACT_SCRIPT }}
