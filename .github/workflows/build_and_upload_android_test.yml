@@ -67,21 +67,21 @@ jobs:
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 31
-          target: google_apis
+          api-level: 29
+          target: aosp_atd
           arch: x86_64
           disable-spellchecker: true
           force-avd-creation: false
           emulator-options: -no-metrics -no-window -gpu swiftshader -noaudio -no-boot-anim -camera-back none
-          disable-animations: false
+          disable-animations: true
           script: |
             ${{ secrets.ANDROID_TEST_CONFIG_INIT_SCRIPT }}
 
       - name: run tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 31
-          target: google_apis
+          api-level: 29
+          target: aosp_atd
           arch: x86_64
           disable-spellchecker: true
           force-avd-creation: false
