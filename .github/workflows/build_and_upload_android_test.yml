@@ -12,7 +12,7 @@ name: build_and_upload_android_test
 
 jobs:
   build-and-release:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
@@ -61,15 +61,15 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-31
+          key: avd-28
 
       - name: create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 31
-          target: aosp_atd
-          arch: arm64v8a
+          api-level: 28
+          target: default
+          arch: x86_64
           disable-spellchecker: true
           force-avd-creation: false
           emulator-options: -no-metrics -no-window -gpu swiftshader -noaudio -no-boot-anim -camera-back none
@@ -80,9 +80,9 @@ jobs:
       - name: run tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 31
-          target: aosp_atd
-          arch: arm64v8a
+          api-level: 28
+          target: default
+          arch: x86_64
           disable-spellchecker: true
           force-avd-creation: false
           emulator-options: -no-metrics -no-snapshot-save -no-window -gpu swiftshader -noaudio -no-boot-anim -camera-back none
