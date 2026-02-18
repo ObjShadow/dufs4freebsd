@@ -21,8 +21,8 @@ jobs:
       - name: Build APK
         run: |
           rm mybv.apk
-          chmod 777 ./build.sh
-          ./build.sh -s com.xiaodianshi.tv.yst
+          chmod +x ./build.sh
+          sudo ./build.sh -s com.xiaodianshi.tv.yst
 
       - name: Upload Binaries
         uses: actions/upload-artifact@v4.3.0
