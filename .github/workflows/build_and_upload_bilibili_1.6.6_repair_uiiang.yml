@@ -10,7 +10,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v2
         with:
-          repository: uiiang/bilibilitv1.6.6-repair
+          repository: uiiang/bilibilitv-1.6.6-repair-uiiang
 
       - name: Install Toolchain
         run: |
