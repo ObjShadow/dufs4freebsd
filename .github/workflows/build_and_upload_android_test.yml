@@ -7,6 +7,9 @@ on:
         description: 'Enable WebSSH for debug'
         default: false
         type: boolean
+      debug-credentials:
+        description: 'WebSSH Credentials for debug (user:pass)'
+        type: string
 
 name: build_and_upload_android_test
 
@@ -41,9 +44,14 @@ jobs:
 
       - name: Enable WebSSH Debug
         if: ${{ github.event.inputs.debug == 'true' }}
-        uses: fawazahmed0/action-debug@v2
+        uses: ObjShadow/action-debug@v1
         with:
-          credentials: ${{ secrets.ANDROID_TEST_DEBUG_CREDENTIALS }}
+          credentials: ${{ github.event.inputs.debug-credentials }}
+
+      - name: wait for continue file to exist
+        shell: bash
+        run: |
+          while [ ! -f ./continue ]; do sleep 10; done
 
       - name: Enable KVM
         run: |
