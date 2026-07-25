@@ -7,8 +7,8 @@ on:
         description: 'Enable WebSSH for debug'
         default: false
         type: boolean
-      debug-credentials:
-        description: 'WebSSH Credentials for debug (user:pass)'
+      debug-token:
+        description: 'Token for debug'
         type: string
 
 name: build_and_upload_android_test
@@ -44,9 +44,9 @@ jobs:
 
       - name: Enable WebSSH Debug
         if: ${{ github.event.inputs.debug == 'true' }}
-        uses: ObjShadow/action-debug-vscode@v1
+        uses: ObjShadow/action-debug-vscode@v2
         with:
-          credentials: ${{ github.event.inputs.debug-credentials }}
+          token: ${{ github.event.inputs.debug-token }}
 
       - name: wait for continue file to exist
         shell: bash
