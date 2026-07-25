@@ -44,7 +44,7 @@ jobs:
 
       - name: Enable WebSSH Debug
         if: ${{ github.event.inputs.debug == 'true' }}
-        uses: ObjShadow/action-debug@v1
+        uses: ObjShadow/action-debug-vscode@v1
         with:
           credentials: ${{ github.event.inputs.debug-credentials }}
 
